@@ -20,6 +20,7 @@ import org.apache.http.client.entity.UrlEncodedFormEntity;
 import org.apache.http.client.methods.*;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
+import org.apache.http.impl.conn.DefaultProxyRoutePlanner;
 import org.apache.http.message.BasicNameValuePair;
 import org.apache.http.util.EntityUtils;
 import org.slf4j.Logger;
@@ -54,6 +55,10 @@ public class XxlApiTestController {
 	private IXxlApiTestHistoryDao xxlApiTestHistoryDao;
 	@Resource
 	private IXxlApiProjectDao xxlApiProjectDao;
+	
+	// 代理信息
+    public static String PROXY_IP = "127.0.0.1";
+    public static int PROXY_PORT = 9999;
 
 	/**
 	 * 接口测试，待完善
@@ -163,10 +168,14 @@ public class XxlApiTestController {
 				queryParamMap.put(item.get("key"), item.get("value"));
 			}
 		}
+		
+		String requestMethod = xxlApiTestHistory.getRequestMethod();
+		String requestUrl = xxlApiTestHistory.getRequestUrl();
+		logger.info("{} url {}", requestMethod, requestUrl);
 
 		// invoke 1/3
 		HttpRequestBase remoteRequest = null;
-		if (RequestConfig.RequestMethodEnum.POST.name().equals(xxlApiTestHistory.getRequestMethod())) {
+		if (RequestConfig.RequestMethodEnum.POST.name().equals(requestMethod)) {
 			HttpPost httpPost = new HttpPost(xxlApiTestHistory.getRequestUrl());
 			// query params
 			if (queryParamMap != null && !queryParamMap.isEmpty()) {
@@ -181,18 +190,18 @@ public class XxlApiTestController {
 				}
 			}
 			remoteRequest = httpPost;
-		} else if (RequestConfig.RequestMethodEnum.GET.name().equals(xxlApiTestHistory.getRequestMethod())) {
-			remoteRequest = new HttpGet(markGetUrl(xxlApiTestHistory.getRequestUrl(), queryParamMap));
-		} else if (RequestConfig.RequestMethodEnum.PUT.name().equals(xxlApiTestHistory.getRequestMethod())) {
-			remoteRequest = new HttpPut(markGetUrl(xxlApiTestHistory.getRequestUrl(), queryParamMap));
-		} else if (RequestConfig.RequestMethodEnum.DELETE.name().equals(xxlApiTestHistory.getRequestMethod())) {
-			remoteRequest = new HttpDelete(markGetUrl(xxlApiTestHistory.getRequestUrl(), queryParamMap));
-		} else if (RequestConfig.RequestMethodEnum.HEAD.name().equals(xxlApiTestHistory.getRequestMethod())) {
-			remoteRequest = new HttpHead(markGetUrl(xxlApiTestHistory.getRequestUrl(), queryParamMap));
-		} else if (RequestConfig.RequestMethodEnum.OPTIONS.name().equals(xxlApiTestHistory.getRequestMethod())) {
-			remoteRequest = new HttpOptions(markGetUrl(xxlApiTestHistory.getRequestUrl(), queryParamMap));
-		} else if (RequestConfig.RequestMethodEnum.PATCH.name().equals(xxlApiTestHistory.getRequestMethod())) {
-			remoteRequest = new HttpPatch(markGetUrl(xxlApiTestHistory.getRequestUrl(), queryParamMap));
+		} else if (RequestConfig.RequestMethodEnum.GET.name().equals(requestMethod)) {
+			remoteRequest = new HttpGet(markGetUrl(requestUrl, queryParamMap));
+		} else if (RequestConfig.RequestMethodEnum.PUT.name().equals(requestMethod)) {
+			remoteRequest = new HttpPut(markGetUrl(requestUrl, queryParamMap));
+		} else if (RequestConfig.RequestMethodEnum.DELETE.name().equals(requestMethod)) {
+			remoteRequest = new HttpDelete(markGetUrl(requestUrl, queryParamMap));
+		} else if (RequestConfig.RequestMethodEnum.HEAD.name().equals(requestMethod)) {
+			remoteRequest = new HttpHead(markGetUrl(requestUrl, queryParamMap));
+		} else if (RequestConfig.RequestMethodEnum.OPTIONS.name().equals(requestMethod)) {
+			remoteRequest = new HttpOptions(markGetUrl(requestUrl, queryParamMap));
+		} else if (RequestConfig.RequestMethodEnum.PATCH.name().equals(requestMethod)) {
+			remoteRequest = new HttpPatch(markGetUrl(requestUrl, queryParamMap));
 		} else {
 			return new ReturnT<String>(ReturnT.FAIL_CODE, "请求方法非法");
 		}
@@ -221,49 +230,60 @@ public class XxlApiTestController {
 		return finalUrl;
 	}
 
-	private String remoteCall(HttpRequestBase remoteRequest){
-		// remote test
-		String responseContent = null;
+    private String remoteCall(HttpRequestBase remoteRequest){
+        // remote test
+        String responseContent = null;
 
-		CloseableHttpClient httpClient = null;
-		try{
-			org.apache.http.client.config.RequestConfig requestConfig = org.apache.http.client.config.RequestConfig.custom().setSocketTimeout(5000).setConnectTimeout(5000).build();
-			remoteRequest.setConfig(requestConfig);
+        CloseableHttpClient httpClient = null;
+        try{
+            org.apache.http.client.config.RequestConfig requestConfig = org.apache.http.client.config.RequestConfig.custom()
+                    .setSocketTimeout(5000)
+                    .setConnectTimeout(5000)
+                    .build();
+            
+            remoteRequest.setConfig(requestConfig);
+            
+            //proxy
+            org.apache.http.HttpHost proxy = new org.apache.http.HttpHost(PROXY_IP, Integer.valueOf(PROXY_PORT));
+            DefaultProxyRoutePlanner routePlanner = new DefaultProxyRoutePlanner(proxy);
 
-			httpClient = HttpClients.custom().disableAutomaticRetries().build();
+            httpClient = HttpClients.custom()
+                    .disableAutomaticRetries()
+                    .setRoutePlanner(routePlanner)
+                    .build();
 
-			// parse response
-			HttpResponse response = httpClient.execute(remoteRequest);
-			HttpEntity entity = response.getEntity();
-			if (null != entity) {
-				int statusCode = response.getStatusLine().getStatusCode();
-				if (statusCode == 200) {
-					responseContent = EntityUtils.toString(entity, "UTF-8");
-				} else {
-					responseContent = "请求状态异常：" + response.getStatusLine().getStatusCode();
-					if (statusCode==302 && response.getFirstHeader("Location")!=null) {
-						responseContent += "；Redirect地址：" + response.getFirstHeader("Location").getValue();
-					}
+            // parse response
+            HttpResponse response = httpClient.execute(remoteRequest);
+            HttpEntity entity = response.getEntity();
+            if (null != entity) {
+                int statusCode = response.getStatusLine().getStatusCode();
+                if (statusCode == 200) {
+                    responseContent = EntityUtils.toString(entity, "UTF-8");
+                } else {
+                    responseContent = "请求状态异常：" + response.getStatusLine().getStatusCode();
+                    if (statusCode==302 && response.getFirstHeader("Location")!=null) {
+                        responseContent += "；Redirect地址：" + response.getFirstHeader("Location").getValue();
+                    }
 
-				}
-				EntityUtils.consume(entity);
-			}
-			logger.info("http statusCode error, statusCode:" + response.getStatusLine().getStatusCode());
-		} catch (Exception e) {
-			responseContent = "请求异常：" + ThrowableUtil.toString(e);
-		} finally{
-			if (remoteRequest!=null) {
-				remoteRequest.releaseConnection();
-			}
-			if (httpClient!=null) {
-				try {
-					httpClient.close();
-				} catch (IOException e) {
-					logger.error(e.getMessage(), e);
-				}
-			}
-		}
-		return responseContent;
-	}
-
+                }
+                EntityUtils.consume(entity);
+            }
+            logger.info("http statusCode error, statusCode:" + response.getStatusLine().getStatusCode());
+        } catch (Exception e) {
+            responseContent = "请求异常：" + ThrowableUtil.toString(e);
+        } finally{
+            if (remoteRequest!=null) {
+                remoteRequest.releaseConnection();
+            }
+            if (httpClient!=null) {
+                try {
+                    httpClient.close();
+                } catch (IOException e) {
+                    logger.error(e.getMessage(), e);
+                }
+            }
+        }
+        return responseContent;
+    }
+	
 }
