@@ -63,7 +63,12 @@
 		FROM xxl_api_project AS t
 		WHERE t.id = #{id}
 	</select>
-
+	
+	<select id="loadByName" parameterType="java.lang.String" resultMap="XxlApiProject">
+        SELECT <include refid="Base_Column_List" />
+        FROM xxl_api_project AS t
+        WHERE t.name = #{name}
+    </select>
 
 	<select id="pageList" parameterType="java.util.Map" resultMap="XxlApiProject">
 		SELECT <include refid="Base_Column_List" />

@@ -17,6 +17,8 @@ import org.springframework.web.bind.annotation.ResponseBody;
 
 import javax.annotation.Resource;
 import javax.servlet.http.HttpServletRequest;
+
+import java.util.Date;
 import java.util.List;
 
 /**
@@ -276,5 +278,33 @@ public class XxlApiDocumentController {
 
 		return "document/document.detail";
 	}
+	
+	@RequestMapping("/copy")
+    @ResponseBody
+    public ReturnT<Integer> copy(HttpServletRequest request, int id, String projectName, String newName) {
+
+        XxlApiDocument apiDocument = xxlApiDocumentDao.load(id);
+        if (null == apiDocument) {
+            return new ReturnT<Integer>(ReturnT.FAIL_CODE, "id 不存在");
+        }
+        
+        XxlApiProject xxlApiProject = xxlApiProjectDao.loadByName(projectName);
+        if (null == xxlApiProject) {
+            return new ReturnT<Integer>(ReturnT.FAIL_CODE, "目标project 不存在");
+        }
+        
+        if (StringUtils.isBlank(newName)) {
+            return new ReturnT<Integer>(ReturnT.FAIL_CODE, "name 必填");
+        }
+        
+        apiDocument.setId(0);
+        apiDocument.setName(newName);
+        apiDocument.setProjectId(xxlApiProject.getId());
+        apiDocument.setAddTime(new Date());
+        apiDocument.setUpdateTime(new Date());
+        
+        int ret = xxlApiDocumentDao.add(apiDocument);
+        return (ret>0)?new ReturnT<Integer>(apiDocument.getId()):new ReturnT<Integer>(ReturnT.FAIL_CODE, null);
+    }
 
 }

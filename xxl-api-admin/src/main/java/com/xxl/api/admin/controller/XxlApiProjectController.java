@@ -81,8 +81,10 @@ public class XxlApiProjectController {
 	@RequestMapping("/add")
 	@ResponseBody
 	public ReturnT<String> add(HttpServletRequest request, XxlApiProject xxlApiProject) {
+	    String projectName = xxlApiProject.getName();
+	    
 		// valid
-		if (StringUtils.isBlank(xxlApiProject.getName())) {
+		if (StringUtils.isBlank(projectName)) {
 			return new ReturnT<String>(ReturnT.FAIL_CODE, "请输入项目名称");
 		}
 		if (StringUtils.isBlank(xxlApiProject.getBaseUrlProduct())) {
@@ -92,6 +94,11 @@ public class XxlApiProjectController {
 		if (!hasBizPermission(request, xxlApiProject.getBizId())) {
 			return new ReturnT<String>(ReturnT.FAIL_CODE, "您没有相关业务线的权限,请联系管理员开通");
 		}
+		
+		XxlApiProject loadByName = xxlApiProjectDao.loadByName(projectName);
+		if (null != loadByName) {
+		    return new ReturnT<String>(ReturnT.FAIL_CODE, "project name 重复！需要保持全局唯一");
+        }
 
 		int ret = xxlApiProjectDao.add(xxlApiProject);
 		return (ret>0)?ReturnT.SUCCESS:ReturnT.FAIL;
@@ -151,5 +158,6 @@ public class XxlApiProjectController {
 		int ret = xxlApiProjectDao.delete(id);
 		return (ret>0)?ReturnT.SUCCESS:ReturnT.FAIL;
 	}
+
 
 }
