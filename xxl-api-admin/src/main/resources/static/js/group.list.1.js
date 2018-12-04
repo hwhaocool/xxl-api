@@ -290,6 +290,60 @@ $(function() {
 		});
 
 	});
+	
+	$(".copy2Project").click(function(){
+		
+		var id = $(this).attr("_id");
+		var name = $(this).attr("_name");
+		
+		console.log("id is " + id + ", name is " + name );
+
+        layer.confirm( "确认删除该接口["+name+"]，将会删除该接口下测试记录和Mock数据?" , {
+            icon: 3,
+            title: '系统提示' ,
+            content: '<input type="text" class="form-control" id="projectName" placeholder="请输入 project名称" maxlength="50"> <input type="text" class="form-control" id="newName" placeholder="请输入 new 名称" value="' + name + '(2)" maxlength="50">',
+            btn: [ '确定', '取消' ]
+        }, function(index){
+        	
+        	var newName = $("#newName").val();
+        	console.log("newName is " + newName);
+        	
+        	var projectName = $("#projectName").val();
+        	console.log("projectName is " + projectName);
+        	
+            layer.close(index);
+
+			$.ajax({
+				type : 'POST',
+				url : base_url + "/document/copy",
+				data : {
+					"id" : id,
+					"projectName": projectName,
+					"newName": newName
+				},
+				dataType : "json",
+				success : function(data){
+					if (data.code == 200) {
+                        layer.open({
+                            icon: '1',
+                            content: "copy成功" ,
+                            end: function(layero, index){
+                                window.location.reload();
+                            }
+                        });
+					} else {
+                        layer.open({
+                            icon: '2',
+                            content: (data.msg||'copy失败')
+                        });
+					}
+				},
+			});
+		});
+
+	});
+	
+
 
 
 });

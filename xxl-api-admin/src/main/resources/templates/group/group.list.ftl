@@ -129,7 +129,7 @@
                                                         </a>
                                                     </td>
                                                     <td class="mailbox-attachment" title="${document.requestUrl}" >
-                                                        <span class="label label-success">${document.requestMethod}</span>&nbsp;&nbsp;<#if document.requestUrl?length gt 25>${document.requestUrl?substring(0, 25)}...<#else>${document.requestUrl}</#if>
+                                                        <span class="label label-success">${document.requestMethod}</span>&nbsp;&nbsp;<#if document.requestUrl?length gt 40>${document.requestUrl?substring(0, 25)}...<#else>${document.requestUrl}</#if>
                                                     </td>
                                                     <td class="mailbox-name" title="${document.name}" >
                                                         <#if document.status==0><i class="fa fa-circle-o text-green"></i>
@@ -154,6 +154,7 @@
                                                             <button class="btn btn-warning btn-xs update" onclick="window.location.href='${request.contextPath}/document/updatePage?id=${document.id}'" >编辑</button>
                                                             <button class="btn btn-danger btn-xs deleteDocument" _id="${document.id}" _name="${document.name}" >删除</button>
                                                             <button class="btn btn-primary btn-xs update" onclick="window.open('${request.contextPath}/test?documentId=${document.id}');" >测试</button>
+                                                            <button class="btn btn-warning btn-xs copy2Project" _id="${document.id}" _name="${document.name}" >复制</button>
                                                         </#if>
                                                     </td>
                                                 </tr>
